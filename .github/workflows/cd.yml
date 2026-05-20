@@ -1,0 +1,54 @@
+name: Terraform CD
+
+on:
+  # Se activa cuando se hace merge a main
+  # Es decir cuando el PR es aprobado y mergeado
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.8.5"
+  AWS_REGION: "us-east-1"
+
+jobs:
+  terraform-apply:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    # Vincula este job al environment production de GitHub
+    # Actúa como puerta de aprobación antes de desplegar
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        # Descarga plugins y conecta con el backend S3
+        run: terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Plan
+        # Calcula los cambios una última vez antes de aplicar
+        run: terraform plan -input=false -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Apply
+        # Aplica los cambios reales en AWS
+        # -auto-approve significa que no pide confirmación manual
+        run: terraform apply -auto-approve -input=false -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
