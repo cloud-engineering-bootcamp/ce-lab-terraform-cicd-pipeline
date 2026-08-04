@@ -1,91 +1,45 @@
 # Lab M5.02 - Terraform CI/CD Pipeline
 
-**Cloud Engineering Bootcamp - Week 5, Day 1**  
-**Module:** Cloud Automation & CI/CD
+## Architecture
 
-## Start Here: Fork, Clone, and Submit
-You will complete this lab by working in **your own fork** of the lab repository and submitting a **Pull Request (PR)**.
-1. **Fork the lab repository** to your GitHub account.
-2. **Clone your fork** locally:
-   ```bash
-   git clone https://github.com/<your-github-username>/ce-lab-terraform-cicd-pipeline.git
-   cd ce-lab-terraform-cicd-pipeline
-   ```
-3. **Follow all instructions below** and save your work in this repo (files, screenshots, and notes).
-4. **When finished, submit your work:**
-   - `git add` → `git commit` → `git push`
-   - Open a **Pull Request** from your fork back to the original lab repo
-   - Copy the **PR URL** and paste it into the **Lab Submission** field in the Student Portal
+Pull Request → CI Workflow (fmt, validate, plan) → PR Comment
+Merge to main → CD Workflow (init, apply) → production environment (required review) → AWS
 
-## 📋 Lab Overview
+## Infrastructure
 
-Build an automated CI/CD pipeline for Terraform infrastructure deployments using GitHub Actions. Learn how to safely automate infrastructure changes with proper validation and approval workflows.
+- VPC (`10.1.0.0/16`) with DNS support enabled
+- 2 public subnets across 2 availability zones
+- Internet Gateway + public route table
+- Remote state stored in S3 (`ce-lab-tfstate-lojt-cloud`), with native S3 locking enabled
 
-## 🎯 Learning Objectives
+## Workflows
 
-- Automate Terraform workflows with GitHub Actions
-- Implement infrastructure validation and testing
-- Configure Terraform backend for state management
-- Set up approval workflows for production deployments
-- Integrate AWS credentials securely
+|      Workflow              |    Trigger             |                  Steps                                                    |
 
-## 📁 Repository Structure
+| CI (`terraform-plan.yml`)  | Pull request to `main` | fmt check, init, validate, plan, post plan as PR comment                  |
+| CD (`terraform-apply.yml`) | Push to `main`         | init, apply (`-auto-approve`), gated by `production` environment approval |
 
-```
-.
-├── .github/
-│   └── workflows/
-│       ├── terraform-plan.yml
-│       └── terraform-apply.yml
-├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── backend.tf
-├── README.md
-└── .gitignore
-```
+## Deployment Process
 
-## Submission
+1. Make infrastructure changes on a feature branch
+2. Open a PR — CI runs automatically and posts the `terraform plan` output as a comment for review
+3. Once approved and merged, CD triggers on push to `main`
+4. CD pauses at the `production` environment gate for manual approval
+5. On approval, `terraform apply -auto-approve` runs and applies the change to AWS
 
-Complete the lab as described in the instructions and save your work in this repo (files, screenshots, and notes):
+## Secrets Required
 
-1. **Terraform CI/CD Workflows**
-   - Automated `terraform plan` on PRs
-   - Automated `terraform apply` on merge to main
-   - Proper AWS credentials configuration
+|       Secret            | Description    |
 
-2. **Infrastructure Code**
-   - Working Terraform configuration
-   - Remote state backend configuration
-   - Variable management
+| `AWS_ACCESS_KEY_ID`     | IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key |
 
-3. **Documentation**
-   - Workflow explanations
-   - Deployment process documentation
+## Local Development
 
-## 🎓 Grading Rubric
-
-| Criteria | Points |
-|----------|--------|
-| **Terraform Automation** | 35 |
-| **Workflow Configuration** | 30 |
-| **Security & Secrets** | 20 |
-| **Documentation** | 15 |
-| **Total** | 100 |
-
-## 💡 Tips
-
-- Use GitHub secrets for AWS credentials
-- Implement PR comments for `terraform plan` output
-- Add manual approval for production deployments
-- Test with non-production resources first
-
-## 📚 Resources
-
-- [Terraform GitHub Actions](https://github.com/hashicorp/setup-terraform)
-- [AWS Credentials in GitHub Actions](https://github.com/aws-actions/configure-aws-credentials)
-
-<!-- ## 🚀 Submission
-
-Submit your repository URL through the course platform. -->
+\`\`\`bash
+cd terraform
+terraform init
+terraform fmt -check
+terraform validate
+terraform plan
+\`\`\`
