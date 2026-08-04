@@ -25,6 +25,7 @@ resource "aws_vpc" "main" {
     Name        = "${var.project_name}-${var.environment}-vpc"
     Environment = var.environment
     ManagedBy   = "terraform"
+    CostCenter  = "engineering"
   }
 }
 
